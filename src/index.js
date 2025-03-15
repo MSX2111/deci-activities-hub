@@ -1,25 +1,39 @@
-const express = require('express')
-const bodyParser = require('body-parser')
-const path = require('path')
+const express = require('express');
+const fetch = require('node-fetch');
+const User = require('./models/User');
 
-const app = express()
-const port = 3000
+const app = express();
+const PORT = 3000;
 
-// setup the ability to see into response bodies
-app.use(bodyParser.urlencoded({ extended: false }))
-app.use(bodyParser.json())
+app.use(express.json());
 
-
-// setup the express assets path
-app.use('/', express.static(path.join(__dirname, '../client')))
-
-// API calls ------------------------------------------------------------------------------------
-app.get('/', async (req, res) => {
-    res.sendFile(path.join(__dirname, './client/pages/user.html'));
-})
+function handleError(res, error) {
+  console.error('An error occurred:', error);
+  res.status(500).json({ error: 'An error occurred while processing the request.' });
+}
 
 app.get('/users', async (req, res) => {
-    // Write your logic here
-})
+  try {
+    const response = await fetch('https://dummyjson.com/users');
+    if (!response.ok) {
+      throw new Error(`Error fetching data: ${response.statusText}`);
+    }
+    const data = await response.json();
+    
+    const usersArray = data.users || [];
 
-app.listen(port, () => console.log(`Example app listening on port ${port}!`))
+    const userInstances = usersArray.map(u => {
+      const user = new User(u.id, u.firstName, u.lastName, u.email);
+      user.displayInfo();
+      return user;
+    });
+
+    res.json(userInstances);
+  } catch (error) {
+    handleError(res, error);
+  }
+});
+
+app.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
+});
